@@ -1,3 +1,14 @@
 fastapi
 uvicorn
 nodeenv
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
+sqlalchemy
+pyodbc
+azure-storage-blob
+azure-search-documents
+openai
+tenacity
+pydantic[email]
+python-dotenv

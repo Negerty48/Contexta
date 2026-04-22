@@ -27,7 +27,7 @@ La aplicación utiliza la arquitectura **RAG** para garantizar que cada asistent
 
 *(Esta sección se detallará al finalizar el desarrollo)*
 
-**Ejecutar la terminal como administrador**
+**IMPORTANTE: Ejecutar la terminal como administrador**
 
 
 1. Clonar el repositorio

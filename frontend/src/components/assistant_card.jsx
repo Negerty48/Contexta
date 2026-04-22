@@ -14,9 +14,6 @@ export default function AssistantCard({ assistant, onEdit, onDelete, onClick }) 
                     <h3 className="text-xl font-bold text-gray-100 group-hover:text-blue-400 transition-colors">
                         {assistant.name}
                     </h3>
-                    <span className="inline-block mt-1 px-2 py-0.5 bg-blue-900/30 text-blue-400 text-xs rounded-full border border-blue-800/50">
-                        ID: {assistant.id.slice(0, 4)}
-                    </span>
                 </div>
 
                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
