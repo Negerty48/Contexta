@@ -5,15 +5,16 @@ import tiktoken
 from dotenv import load_dotenv
 
 # Extractores
-import fitz  # PyMuPDF para PDF
-import docx  # para DOCX
-import pptx  # para PPTX
+import fitz  
+import docx  
+import pptx  
 
 # Azure AI
 from openai import AzureOpenAI
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 from azure.search.documents.indexes import SearchIndexClient
+from azure.search.documents.models import VectorizedQuery
 from azure.search.documents.indexes.models import (
     SearchIndex,
     SimpleField,
@@ -37,7 +38,7 @@ index_client = SearchIndexClient(
 # Cliente para subir documentos al Índice
 search_client = SearchClient(
     endpoint=os.getenv("AZURE_SEARCH_ENDPOINT"),
-    index_name=os.getenv("AZURE_SEARCH_INDEX_NAME", "contexta-index"),
+    index_name=os.getenv("AZURE_SEARCH_INDEX_NAME"),
     credential=AzureKeyCredential(os.getenv("AZURE_SEARCH_ADMIN_KEY"))
 )
 
@@ -48,8 +49,9 @@ openai_client = AzureOpenAI(
     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
 )
 
-EMBEDDING_MODEL = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-ada-002")
-INDEX_NAME = os.getenv("AZURE_SEARCH_INDEX_NAME", "contexta-index")
+CHAT_MODEL = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT")
+EMBEDDING_MODEL = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
+INDEX_NAME = os.getenv("AZURE_SEARCH_INDEX_NAME")
 
 # --- 1. CREACIÓN DEL ÍNDICE (Si no existe) ---
 def asegurar_indice_existe():
@@ -156,3 +158,72 @@ def procesar_e_ingestar_documento(file_content: bytes, filename: str, asistente_
     # 4. Subir a Azure AI Search en lotes
     search_client.upload_documents(documents=documentos_para_search)
     print(f"✅ Ingesta completada para {filename}.")
+
+# --- 4. RECUPERACIÓN (Retrieval) ---
+def buscar_contexto(pregunta: str, asistente_id: str) -> str:
+    print(f"Buscando contexto para la pregunta: '{pregunta}'")
+    
+    # 1. Convertir la pregunta a vector
+    respuesta_vector = openai_client.embeddings.create(input=[pregunta], model=EMBEDDING_MODEL)
+    vector_pregunta = respuesta_vector.data[0].embedding
+
+    # 2. Configurar la búsqueda vectorial (Queremos los 3 pedazos más relevantes)
+    vector_query = VectorizedQuery(
+        vector=vector_pregunta, 
+        k_nearest_neighbors=3, 
+        fields="content_vector"
+    )
+
+    # 3. Búsqueda Híbrida (Texto + Vector) filtrando SOLO por este asistente
+    resultados = search_client.search(
+        search_text=pregunta,
+        vector_queries=[vector_query],
+        filter=f"assistant_id eq '{asistente_id}'",
+        top=3
+    )
+
+    # 4. Juntar los pedazos encontrados
+    textos_recuperados = []
+    for doc in resultados:
+        textos_recuperados.append(f"Documento origen: {doc['filename']}\nContenido: {doc['chunk_text']}")
+
+    contexto_final = "\n\n---\n\n".join(textos_recuperados)
+    return contexto_final
+
+
+# --- 5. GENERACIÓN (Augmented Generation) ---
+def generar_respuesta_rag(pregunta: str, historial: list, asistente_id: str, system_prompt: str) -> str:
+    # 1. Extraer los documentos de Azure AI Search
+    contexto = buscar_contexto(pregunta, asistente_id)
+    
+    # 2. Construir el Mega-Prompt (System Prompt + Documentos + Restricciones)
+    prompt_completo = f"""
+    {system_prompt}
+
+    A continuación se te proporciona información de contexto extraída de los documentos del usuario.
+    Debes usar EXCLUSIVAMENTE esta información para responder a la pregunta. 
+    Si la respuesta no se encuentra en el contexto, responde amablemente que no tienes esa información en tus documentos.
+    
+    INFORMACIÓN DE CONTEXTO:
+    {contexto if contexto else "No se encontraron documentos relevantes."}
+    """
+
+    # 3. Montar la lista de mensajes para OpenAI
+    mensajes = [{"role": "system", "content": prompt_completo}]
+    
+    # Añadimos el historial de la conversación (para que tenga memoria)
+    for msg in historial:        
+        rol = "assistant" if msg["role"] in ["ai", "assistant"] else "user"
+        mensajes.append({"role": rol, "content": msg["content"]})
+        
+    # Añadimos la pregunta actual
+    mensajes.append({"role": "user", "content": pregunta})
+
+    # 4. Llamar a GPT-4o-mini
+    respuesta = openai_client.chat.completions.create(
+        model=CHAT_MODEL,
+        messages=mensajes,
+        temperature=0.3
+    )
+
+    return respuesta.choices[0].message.content

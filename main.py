@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 
-from sqlalchemy import create_engine, Column, String, DateTime, ForeignKey, text
+from sqlalchemy import create_engine, Column, String, DateTime, ForeignKey, text, Text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session, relationship
 from sqlalchemy.exc import OperationalError
 
@@ -20,6 +20,7 @@ from jose import jwt, JWTError
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 from dotenv import load_dotenv
 from azure.storage.blob import BlobServiceClient
+from rag_engine import procesar_e_ingestar_documento, generar_respuesta_rag
 
 # Cargar variables
 load_dotenv()
@@ -71,7 +72,7 @@ class Asistente(Base):
     usuario_id = Column(String(36), ForeignKey('usuarios.id', ondelete="CASCADE"), nullable=False)
     nombre = Column(String(100), nullable=False)
     descripcion = Column(String(255))
-    system_prompt = Column(String(2000), nullable=False)
+    system_prompt = Column(Text, nullable=False)
     creado_en = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     propietario = relationship("Usuario", back_populates="asistentes")
@@ -86,6 +87,14 @@ class Documento(Base):
     blob_path = Column(String(500), nullable=False) # Ruta en Azure Blob
 
     asistente = relationship("Asistente", back_populates="documentos")
+
+class MensajeChat(BaseModel):
+    role: str
+    content: str
+
+class RequestChat(BaseModel):
+    pregunta: str
+    historial: List[MensajeChat] = []
 
 Base.metadata.create_all(bind=engine)
 
@@ -189,19 +198,24 @@ async def crear_asistente(
 
     if files:
         for file in files:
-            # Usamos el ID del asistente como prefijo (Carpeta) para mantener orden en Blob
             blob_path = f"{asistente_id}/{file.filename}"
-            
-            # Subir a Azure Blob Storage
-            blob_client = container_client.get_blob_client(blob_path)
-            blob_client.upload_blob(file.file, overwrite=True)
 
-            # Guardar en SQL
+            # 1. Leer el archivo en memoria (Lo necesitamos para Azure Search y para Blob)
+            file_content = await file.read()
+
+            # 2. Subir a Azure Blob Storage
+            blob_client = container_client.get_blob_client(blob_path)
+            blob_client.upload_blob(file_content, overwrite=True)
+
+            # 3. Guardar en SQL
+            nuevo_doc_id = str(uuid.uuid4())
             nuevo_doc = Documento(
-                id=str(uuid.uuid4()), asistente_id=asistente_id, 
+                id=nuevo_doc_id, asistente_id=asistente_id, 
                 nombre_archivo=file.filename, blob_path=blob_path
             )
             db.add(nuevo_doc)
+            
+            procesar_e_ingestar_documento(file_content, file.filename, asistente_id, nuevo_doc_id)
 
     db.commit()
     return {"mensaje": "Asistente creado", "id": asistente_id}
@@ -233,16 +247,25 @@ async def actualizar_asistente(
         for file in files:
             blob_path = f"{asistente_id}/{file.filename}"
             
-            # Subir a Azure
+            # 1. Leer el archivo en memoria (Vital para usarlo en Blob y en AI Search)
+            file_content = await file.read()
+            
+            # 2. Subir a Azure Blob Storage
             blob_client = container_client.get_blob_client(blob_path)
-            blob_client.upload_blob(file.file, overwrite=True)
+            blob_client.upload_blob(file_content, overwrite=True)
 
-            # Guardar registro en SQL
+            # 3. Guardar registro en SQL
+            nuevo_doc_id = str(uuid.uuid4())
             nuevo_doc = Documento(
-                id=str(uuid.uuid4()), asistente_id=asistente_id, 
-                nombre_archivo=file.filename, blob_path=blob_path
+                id=nuevo_doc_id, 
+                asistente_id=asistente_id, 
+                nombre_archivo=file.filename, 
+                blob_path=blob_path
             )
             db.add(nuevo_doc)
+            
+            # 4. Ingestar en Azure AI Search
+            procesar_e_ingestar_documento(file_content, file.filename, asistente_id, nuevo_doc_id)
 
     db.commit()
     return {"mensaje": "Asistente actualizado con éxito"}
@@ -288,6 +311,36 @@ def borrar_documento(asistente_id: str, doc_id: str, db: Session = Depends(get_d
     
     return {"mensaje": "Documento eliminado"}
 
+# 6. CHAT CON EL ASISTENTE (RAG)
+@app.post("/api/asistentes/{asistente_id}/chat")
+def chat_asistente(
+    asistente_id: str, 
+    chat_req: RequestChat, 
+    db: Session = Depends(get_db), 
+    user_id: str = Depends(get_current_user_id)
+):
+    # Validar que el asistente existe y es del usuario logueado
+    asistente = db.query(Asistente).filter(Asistente.id == asistente_id, Asistente.usuario_id == user_id).first()
+    if not asistente:
+        raise HTTPException(status_code=404, detail="Asistente no encontrado o sin permisos")
+
+    try:
+        # Convertimos el historial de Pydantic a una lista de diccionarios
+        historial_dicts = [{"role": msg.role, "content": msg.content} for msg in chat_req.historial]
+        
+        # Llamar a nuestra IA (GPT-4o-mini + Azure AI Search)
+        respuesta_ia = generar_respuesta_rag(
+            pregunta=chat_req.pregunta,
+            historial=historial_dicts,
+            asistente_id=asistente_id,
+            system_prompt=asistente.system_prompt
+        )
+        
+        return {"respuesta": respuesta_ia}
+        
+    except Exception as e:
+        print(f"Error en el chat: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error procesando la respuesta de la IA")
 
 # --- FRONTEND ---
 FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "frontend", "dist")
