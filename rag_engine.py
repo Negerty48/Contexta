@@ -56,10 +56,8 @@ INDEX_NAME = os.getenv("AZURE_SEARCH_INDEX_NAME")
 # --- 1. CREACIÓN DEL ÍNDICE (Si no existe) ---
 def asegurar_indice_existe():
     try:
-        index_client.get_index(INDEX_NAME)
-        print(f"Índice '{INDEX_NAME}' listo.")
-    except Exception:
-        print(f"Creando índice '{INDEX_NAME}'...")
+        index_client.get_index(INDEX_NAME)        
+    except Exception:        
         # Estructura del índice vectorial
         fields = [
             SimpleField(name="id", type=SearchFieldDataType.String, key=True),
@@ -77,8 +75,7 @@ def asegurar_indice_existe():
         )
 
         index = SearchIndex(name=INDEX_NAME, fields=fields, vector_search=vector_search)
-        index_client.create_index(index)
-        print("Índice creado con éxito.")
+        index_client.create_index(index)        
 
 # Ejecutar al importar para asegurar que la base de datos de IA existe
 asegurar_indice_existe()
@@ -106,22 +103,20 @@ def extraer_texto(file_content: bytes, filename: str) -> str:
         elif ext in ["txt", "md"]:
             text = file_content.decode('utf-8', errors='ignore')
         else:
-            print(f"Formato no soportado para lectura directa: {ext}")
-    except Exception as e:
-        print(f"Error extrayendo {filename}: {e}")
-        
+            raise ValueError(f"Formato no soportado para extracción: {ext}")      
+    except Exception as e:        
+        raise ValueError(f"Error extrayendo texto de {filename}: {str(e)}")
+
     return text.strip()
 
 
 # --- 3. PROCESAMIENTO E INGESTA (El flujo principal) ---
-def procesar_e_ingestar_documento(file_content: bytes, filename: str, asistente_id: str, doc_id: str):
-    print(f"Iniciando ingesta de: {filename}")
+def procesar_e_ingestar_documento(file_content: bytes, filename: str, asistente_id: str, doc_id: str):    
     
     # 1. Extraer texto
     texto_completo = extraer_texto(file_content, filename)
     if not texto_completo:
-        print("El documento no contenía texto legible.")
-        return
+        raise ValueError(f"El documento '{filename}' no contenía texto legible.")        
 
     # 2. Chunking (Cortar en pedazos de ~1000 tokens)
     enc = tiktoken.get_encoding("cl100k_base")
@@ -134,9 +129,7 @@ def procesar_e_ingestar_documento(file_content: bytes, filename: str, asistente_
     for i in range(0, len(tokens), chunk_size - overlap):
         chunk_tokens = tokens[i:i + chunk_size]
         chunk_text = enc.decode(chunk_tokens)
-        chunks.append(chunk_text)
-
-    print(f"Documento dividido en {len(chunks)} chunks. Generando vectores...")
+        chunks.append(chunk_text)    
 
     # 3. Generar vectores y preparar documentos para Search
     documentos_para_search = []
@@ -156,12 +149,10 @@ def procesar_e_ingestar_documento(file_content: bytes, filename: str, asistente_
         })
 
     # 4. Subir a Azure AI Search en lotes
-    search_client.upload_documents(documents=documentos_para_search)
-    print(f"✅ Ingesta completada para {filename}.")
+    search_client.upload_documents(documents=documentos_para_search)    
 
 # --- 4. RECUPERACIÓN (Retrieval) ---
-def buscar_contexto(pregunta: str, asistente_id: str) -> str:
-    print(f"Buscando contexto para la pregunta: '{pregunta}'")
+def buscar_contexto(pregunta: str, asistente_id: str) -> str:    
     
     # 1. Convertir la pregunta a vector
     respuesta_vector = openai_client.embeddings.create(input=[pregunta], model=EMBEDDING_MODEL)
@@ -227,3 +218,39 @@ def generar_respuesta_rag(pregunta: str, historial: list, asistente_id: str, sys
     )
 
     return respuesta.choices[0].message.content
+
+# --- 6. LIMPIEZA Y OPTIMIZACIÓN (Garbage Collection) ---
+
+def eliminar_documento_del_indice(doc_id: str):
+    """Busca todos los chunks (pedazos) de un documento y los borra de AI Search"""
+    
+    # 1. Buscar los IDs de todos los pedazos que pertenecen a este documento
+    resultados = search_client.search(
+        search_text="*",
+        filter=f"doc_id eq '{doc_id}'",
+        select="id",
+        top=1000 # Aseguramos recuperar todos aunque el documento sea muy largo
+    )
+    
+    documentos_a_borrar = [{"id": doc["id"]} for doc in resultados]
+    
+    # 2. Si encontró pedazos, los borra de la base de datos vectorial
+    if documentos_a_borrar:
+        search_client.delete_documents(documents=documentos_a_borrar)                    
+
+
+def eliminar_asistente_del_indice(asistente_id: str):
+    """Borra ABSOLUTAMENTE TODOS los vectores de un asistente cuando se elimina el agente"""    
+    
+    resultados = search_client.search(
+        search_text="*",
+        filter=f"assistant_id eq '{asistente_id}'",
+        select="id",
+        top=1000 
+    )
+    
+    documentos_a_borrar = [{"id": doc["id"]} for doc in resultados]
+    
+    if documentos_a_borrar:
+        # Azure Search tiene un límite por lote, pero para la capa Basic 1000 está perfecto
+        search_client.delete_documents(documents=documentos_a_borrar)        

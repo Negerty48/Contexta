@@ -2,14 +2,18 @@ import React, { useState, useEffect } from 'react';
 import Login from './components/login';
 import Dashboard from './components/dashboard';
 import ChatView from './components/chat_view';
+import Toast from './components/toast';
 
 export default function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [assistants, setAssistants] = useState([]);
-    
-    // Solo guardamos el ID (String)
+    const [assistants, setAssistants] = useState([]);        
     const [activeAssistantId, setActiveAssistantId] = useState(null);
+    const [toast, setToast] = useState(null);
+
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+    };
 
     const fetchAssistants = async () => {
         const token = localStorage.getItem('contexta_token');
@@ -40,8 +44,7 @@ export default function App() {
         setAssistants([]);
         setActiveAssistantId(null);
     };
-
-    // MAGIA ANTI-CUELGUES: Acepta tanto Strings como Objetos sin romperse
+    
     const handleEnterChat = (data) => {
         if (!data) {
             setActiveAssistantId(null);
@@ -55,7 +58,8 @@ export default function App() {
     if (isLoading) return <div className="min-h-screen bg-gray-950 flex items-center justify-center text-blue-500">Cargando...</div>;
 
     return (
-        <div className="min-h-screen bg-gray-950 text-gray-100">
+        <div className="min-h-screen bg-gray-950 text-gray-100">            
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             {!isAuthenticated ? (
                 <Login onLogin={() => { setIsAuthenticated(true); fetchAssistants(); }} />
             ) : activeAssistantId ? (
@@ -76,6 +80,7 @@ export default function App() {
                     onRefresh={fetchAssistants}
                     onLogout={handleLogout}
                     onEnterChat={handleEnterChat}
+                    showToast={showToast}
                 />
             )}
         </div>

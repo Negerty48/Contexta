@@ -20,7 +20,12 @@ from jose import jwt, JWTError
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 from dotenv import load_dotenv
 from azure.storage.blob import BlobServiceClient
-from rag_engine import procesar_e_ingestar_documento, generar_respuesta_rag
+from rag_engine import (
+    procesar_e_ingestar_documento, 
+    generar_respuesta_rag, 
+    eliminar_documento_del_indice, 
+    eliminar_asistente_del_indice
+)
 
 # Cargar variables
 load_dotenv()
@@ -227,7 +232,7 @@ async def actualizar_asistente(
     name: str = Form(...),
     description: str = Form(""),
     systemPrompt: str = Form(...),
-    files: List[UploadFile] = File(None), # Archivos nuevos opcionales
+    files: List[UploadFile] = File(default=[]), # Archivos nuevos opcionales
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id)
 ):
@@ -279,13 +284,16 @@ def borrar_asistente(asistente_id: str, db: Session = Depends(get_db), user_id: 
     
     container_client = blob_service_client.get_container_client(CONTAINER_NAME)
     
-    # 1. Borrar todos sus archivos físicos de Azure Blob Storage
+    # 1. Borrar de Azure Blob Storage
     for doc in asistente.documentos:
         blob_client = container_client.get_blob_client(doc.blob_path)
         if blob_client.exists():
             blob_client.delete_blob()
 
-    # 2. Borrar de SQL (Borrará los documentos en cascada por la configuración de SQLAlchemy)
+    # 2. Borrar de Azure AI Search
+    eliminar_asistente_del_indice(asistente_id)
+
+    # 3. Borrar de SQL
     db.delete(asistente)
     db.commit()
     return {"mensaje": "Asistente y documentos eliminados"}
@@ -305,6 +313,9 @@ def borrar_documento(asistente_id: str, doc_id: str, db: Session = Depends(get_d
         if blob_client.exists():
             blob_client.delete_blob()
         
+        # Borrar de Azure AI Search
+        eliminar_documento_del_indice(doc_id)
+
         # Borrar de SQL
         db.delete(doc)
         db.commit()
@@ -338,8 +349,7 @@ def chat_asistente(
         
         return {"respuesta": respuesta_ia}
         
-    except Exception as e:
-        print(f"Error en el chat: {str(e)}")
+    except Exception as e:        
         raise HTTPException(status_code=500, detail="Error procesando la respuesta de la IA")
 
 # --- FRONTEND ---
