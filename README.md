@@ -20,7 +20,7 @@ La aplicación utiliza la arquitectura **RAG** para garantizar que cada asistent
 
 * **Frontend:** React / Next.js (con Tailwind CSS)
 * **Backend:** Python con FastAPI
-* **Base de Datos / Vectorial:** PostgreSQL + extensión pgvector (o Qdrant)
+* **Base de Datos / Vectorial:** Azure SQL y Azure AI Search
 * **Modelos de IA:** Azure OpenAI Service (`text-embedding-3-small` para embeddings y `gpt-4o-mini` para generación).
 
 ## 🚀 Instalación y Ejecución Local
