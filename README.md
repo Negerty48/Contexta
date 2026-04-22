@@ -27,15 +27,23 @@ La aplicación utiliza la arquitectura **RAG** para garantizar que cada asistent
 
 *(Esta sección se detallará al finalizar el desarrollo)*
 
+**Ejecutar la terminal como administrador**
+
+
 1. Clonar el repositorio
 ```bash
 git clone https://github.com/Negerty48/Contexta.git
 ```
-2. Crear el entorno virtual (venv)
+2. Instalar y compilar el Frontend
+```bash
+# Entrar a la carpeta del frontend
+cd Contexta
+```
+3. Crear el entorno virtual (venv)
 ```bash
 python -m venv venv
 ```
-3. Activar el entorno virtual
+4. Activar el entorno virtual
 ```bash
 # (Windows)
 .\venv\Scripts\activate
@@ -44,11 +52,11 @@ python -m venv venv
 # (macOS/Linux)
 source venv/bin/activate
 ```
-4. Instalar las dependecias
+5. Instalar las dependecias
 ```bash
 pip install -r requirements.txt
 ```
-5. Integrar Node.js y npm dentro del entorno virtual
+6. Integrar Node.js y npm dentro del entorno virtual
 ```bash
 # Instalar Node.js en el entorno virtual actual (-p)
 nodeenv -p
@@ -56,7 +64,7 @@ nodeenv -p
 # Verificar que npm se ha instalado correctamente
 npm -v
 ```
-6. Instalar y compilar el Frontend
+7. Instalar y compilar el Frontend
 ```bash
 # Entrar a la carpeta del frontend
 cd frontend
@@ -70,7 +78,7 @@ npm run build
 # Volver a la raíz del proyecto
 cd ..
 ```
-7. Ejecutar la aplicación
+8. Ejecutar la aplicación
 ```bash
 python .\.main.py
 ```
