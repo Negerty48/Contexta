@@ -31,7 +31,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 1440
 
 # --- CONFIGURACIÓN BLOB STORAGE ---
 blob_service_client = BlobServiceClient.from_connection_string(os.getenv("AZURE_STORAGE_CONNECTION_STRING"))
-CONTAINER_NAME = os.getenv("AZURE_STORAGE_CONTAINER", "documentos-contexta")
+CONTAINER_NAME = os.getenv("AZURE_STORAGE_CONTAINER")
 
 # Crear el contenedor si no existe (ideal para la primera vez)
 try:
