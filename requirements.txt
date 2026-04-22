@@ -12,3 +12,7 @@ openai
 tenacity
 pydantic[email]
 python-dotenv
+tiktoken
+pymupdf
+python-docx
+python-pptx
