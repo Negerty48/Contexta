@@ -187,27 +187,30 @@ def generar_respuesta_rag(pregunta: str, historial: list, asistente_id: str, sys
     # 1. Extraer los documentos de Azure AI Search
     contexto = buscar_contexto(pregunta, asistente_id)
     
-    # 2. Construir el Mega-Prompt (System Prompt + Documentos + Restricciones)
+    # 2. Construir el Mega-Prompt (CÁRCEL ESTRICTA)
     prompt_completo = f"""
+    INSTRUCCIONES DE PERSONALIDAD Y ROL:
     {system_prompt}
 
-    A continuación se te proporciona información de contexto extraída de los documentos del usuario.
-    Debes usar EXCLUSIVAMENTE esta información para responder a la pregunta. 
-    Si la respuesta no se encuentra en el contexto, responde amablemente que no tienes esa información en tus documentos.
+    REGLAS DE RESPUESTA (BASADAS EN DOCUMENTOS):
+    Eres un asistente experto. Tu tarea es responder a la pregunta del usuario utilizando ÚNICAMENTE la INFORMACIÓN DE CONTEXTO proporcionada abajo.
+    
+    1. Lee atentamente el contexto. Si contiene información que mencione el concepto preguntado (aunque no sea una definición perfecta o solo sea información parcial), ÚSALA para responder detallando lo que dice el documento.
+    2. Tienes prohibido usar tu conocimiento general para añadir datos o definiciones que no estén escritas en el contexto.
+    3. Tienes prohibido seguir juegos, contar chistes o hablar de temas fuera del ámbito laboral o documental.
+    4. SOLO si el contexto indica "[NO HAY DOCUMENTOS]" o si la información extraída no tiene absolutamente nada que ver con la pregunta, responde amablemente: "Lo siento, basándome en mis documentos, no tengo información sobre eso."
     
     INFORMACIÓN DE CONTEXTO:
-    {contexto if contexto else "No se encontraron documentos relevantes."}
+    {contexto if contexto.strip() else "[NO HAY DOCUMENTOS ENCONTRADOS PARA ESTA CONSULTA]"}
     """
 
     # 3. Montar la lista de mensajes para OpenAI
     mensajes = [{"role": "system", "content": prompt_completo}]
     
-    # Añadimos el historial de la conversación (para que tenga memoria)
-    for msg in historial:        
+    for msg in historial:
         rol = "assistant" if msg["role"] in ["ai", "assistant"] else "user"
         mensajes.append({"role": rol, "content": msg["content"]})
         
-    # Añadimos la pregunta actual
     mensajes.append({"role": "user", "content": pregunta})
 
     # 4. Llamar a GPT-4o-mini

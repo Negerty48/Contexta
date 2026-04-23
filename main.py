@@ -80,9 +80,9 @@ class Asistente(Base):
     system_prompt = Column(Text, nullable=False)
     creado_en = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    propietario = relationship("Usuario", back_populates="asistentes")
-    # Si borro un asistente, borra sus documentos en SQL automáticamente
+    propietario = relationship("Usuario", back_populates="asistentes")    
     documentos = relationship("Documento", back_populates="asistente", cascade="all, delete-orphan")
+    mensajes = relationship("MensajeChat", back_populates="asistente", cascade="all, delete-orphan")
 
 class Documento(Base):
     __tablename__ = 'documentos'
@@ -93,15 +93,25 @@ class Documento(Base):
 
     asistente = relationship("Asistente", back_populates="documentos")
 
-class MensajeChat(BaseModel):
+class MensajeChat(Base):
+    __tablename__ = 'mensajes_chat'
+    id = Column(String(36), primary_key=True, index=True)
+    asistente_id = Column(String(36), ForeignKey('asistentes.id', ondelete="CASCADE"), nullable=False)
+    role = Column(String(20), nullable=False) # 'user' o 'assistant'
+    content = Column(Text, nullable=False)
+    creado_en = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    asistente = relationship("Asistente", back_populates="mensajes")
+
+Base.metadata.create_all(bind=engine)
+
+class MensajeHistorial(BaseModel):
     role: str
     content: str
 
 class RequestChat(BaseModel):
     pregunta: str
-    historial: List[MensajeChat] = []
-
-Base.metadata.create_all(bind=engine)
+    historial: List[MensajeHistorial] = []
 
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(3), retry=retry_if_exception_type(OperationalError))
 def get_db():
@@ -347,10 +357,28 @@ def chat_asistente(
             system_prompt=asistente.system_prompt
         )
         
+        # Guardar mensajes
+        msg_user = MensajeChat(id=str(uuid.uuid4()), asistente_id=asistente_id, role="user", content=chat_req.pregunta)
+        msg_ia = MensajeChat(id=str(uuid.uuid4()), asistente_id=asistente_id, role="assistant", content=respuesta_ia)
+
+        db.add(msg_user)
+        db.add(msg_ia)
+        db.commit()
+        
         return {"respuesta": respuesta_ia}
         
     except Exception as e:        
         raise HTTPException(status_code=500, detail="Error procesando la respuesta de la IA")
+
+# RECUPERAR CHAT con el asistente    
+@app.get("/api/asistentes/{asistente_id}/historial")
+def obtener_historial(asistente_id: str, db: Session = Depends(get_db), user_id: str = Depends(get_current_user_id)):
+    # Validar que el asistente es del usuario
+    asistente = db.query(Asistente).filter(Asistente.id == asistente_id, Asistente.usuario_id == user_id).first()
+    if not asistente: raise HTTPException(status_code=404)
+
+    mensajes = db.query(MensajeChat).filter(MensajeChat.asistente_id == asistente_id).order_by(MensajeChat.creado_en.asc()).all()
+    return [{"role": m.role, "content": m.content} for m in mensajes]
 
 # --- FRONTEND ---
 FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "frontend", "dist")

@@ -7,7 +7,11 @@ import Toast from './components/toast';
 export default function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [assistants, setAssistants] = useState([]);        
+    
+    // NUEVO ESTADO: Para saber si estamos descargando los agentes de Azure SQL
+    const [isFetchingAssistants, setIsFetchingAssistants] = useState(true); 
+    
+    const [assistants, setAssistants] = useState([]);
     const [activeAssistantId, setActiveAssistantId] = useState(null);
     const [toast, setToast] = useState(null);
 
@@ -16,8 +20,12 @@ export default function App() {
     };
 
     const fetchAssistants = async () => {
+        setIsFetchingAssistants(true); // Encendemos el estado de carga
         const token = localStorage.getItem('contexta_token');
-        if (!token) return;
+        if (!token) {
+            setIsFetchingAssistants(false);
+            return;
+        }
         try {
             const response = await fetch("http://localhost:8000/api/asistentes", {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -26,16 +34,25 @@ export default function App() {
                 const data = await response.json();
                 setAssistants(data);
             }
-        } catch (error) { console.error("Error:", error); }
+        } catch (error) { 
+            console.error("Error:", error); 
+        } finally {
+            setIsFetchingAssistants(false); // Apagamos el estado de carga llegue lo que llegue
+        }
     };
 
     useEffect(() => {
-        const token = localStorage.getItem('contexta_token');
-        if (token) {
-            setIsAuthenticated(true);
-            fetchAssistants();
-        }
-        setIsLoading(false);
+        const init = async () => {
+            const token = localStorage.getItem('contexta_token');
+            if (token) {
+                setIsAuthenticated(true);
+                await fetchAssistants(); // Esperamos a que los agentes carguen
+            } else {
+                setIsFetchingAssistants(false);
+            }
+            setIsLoading(false); // Quitamos la pantalla de carga principal
+        };
+        init();
     }, []);
 
     const handleLogout = () => {
@@ -44,7 +61,7 @@ export default function App() {
         setAssistants([]);
         setActiveAssistantId(null);
     };
-    
+
     const handleEnterChat = (data) => {
         if (!data) {
             setActiveAssistantId(null);
@@ -58,8 +75,9 @@ export default function App() {
     if (isLoading) return <div className="min-h-screen bg-gray-950 flex items-center justify-center text-blue-500">Cargando...</div>;
 
     return (
-        <div className="min-h-screen bg-gray-950 text-gray-100">            
+        <div className="min-h-screen bg-gray-950 text-gray-100">
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
             {!isAuthenticated ? (
                 <Login onLogin={() => { setIsAuthenticated(true); fetchAssistants(); }} />
             ) : activeAssistantId ? (
@@ -81,6 +99,7 @@ export default function App() {
                     onLogout={handleLogout}
                     onEnterChat={handleEnterChat}
                     showToast={showToast}
+                    isFetching={isFetchingAssistants} // PASAMOS EL ESTADO AL DASHBOARD
                 />
             )}
         </div>

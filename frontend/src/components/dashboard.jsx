@@ -3,11 +3,9 @@ import AssistantCard from './assistant_card';
 import AssistantModal from './assistant_modal';
 import ConfirmModal from './confirm_modal';
 
-export default function Dashboard({ assistants, onRefresh, onLogout, onEnterChat, showToast }) {
+export default function Dashboard({ assistants, onRefresh, onLogout, onEnterChat, showToast, isFetching }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAssistant, setEditingAssistant] = useState(null);
-    
-    // Estado para controlar la ventanita de confirmación de borrado
     const [confirmDialog, setConfirmDialog] = useState(null);
 
     const userName = localStorage.getItem('contexta_user') || 'Usuario';
@@ -21,8 +19,8 @@ export default function Dashboard({ assistants, onRefresh, onLogout, onEnterChat
             });
             
             if (response.ok) {
-                onRefresh(); // Recargamos la lista desde el backend
-                setConfirmDialog(null); // Cerramos el modal
+                onRefresh();
+                setConfirmDialog(null);
                 showToast("Asistente y documentos eliminados de la IA correctamente.", "success");
             } else {
                 throw new Error("No se pudo eliminar en el servidor");
@@ -36,7 +34,6 @@ export default function Dashboard({ assistants, onRefresh, onLogout, onEnterChat
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-950">
-            {/* Header del Dashboard */}
             <header className="flex items-center justify-between px-8 py-4 bg-gray-900 border-b border-gray-800 shrink-0">
                 <h1 className="text-xl font-bold text-white">
                     Contexta <span className="text-blue-500 font-normal">| Platform</span>
@@ -60,28 +57,36 @@ export default function Dashboard({ assistants, onRefresh, onLogout, onEnterChat
                 </div>
             </header>
 
-            {/* Cuadrícula Principal */}
             <main className="flex-1 p-8 overflow-y-auto">
-                {/* Pantalla amigable si no hay agentes */}
-                {assistants.length === 0 ? (
+                {isFetching ? (
+                    /* ESTADO 1: CARGANDO DATOS (Spinner) */
+                    <div className="h-full flex flex-col items-center justify-center text-gray-500 space-y-4">
+                        <div className="w-10 h-10 border-4 border-gray-800 border-t-blue-500 rounded-full animate-spin"></div>
+                        <p className="text-sm">Sincronizando agentes...</p>
+                    </div>
+                ) : assistants.length === 0 ? (
+                    /* ESTADO 2: CERO AGENTES (Con el botón circular funcionando) */
                     <div className="h-full flex flex-col items-center justify-center text-gray-500">
-                        <div className="w-20 h-20 mb-6 bg-gray-900 rounded-full flex items-center justify-center border border-gray-800">
-                            <svg className="w-10 h-10 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button 
+                            onClick={() => { setEditingAssistant(null); setIsModalOpen(true); }}
+                            className="w-20 h-20 mb-6 bg-gray-900 hover:bg-gray-800 rounded-full flex items-center justify-center border border-gray-700 cursor-pointer transition-all shadow-lg shadow-blue-900/10 group transform hover:scale-105"
+                            title="Crear nuevo asistente"
+                        >
+                            <svg className="w-10 h-10 text-gray-500 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                             </svg>
-                        </div>
-                        <h2 className="text-xl font-semibold text-gray-400 mb-2">No tienes ningún asistente</h2>
-                        <p className="text-sm">Crea tu primer agente en la parte superior derecha para empezar.</p>
+                        </button>
+                        <h2 className="text-xl font-semibold text-gray-300 mb-2">No tienes ningún asistente</h2>
+                        <p className="text-sm">Haz clic en el botón superior para crear tu primer agente.</p>
                     </div>
                 ) : (
-                    /* Grid de tarjetas de los asistentes */
+                    /* ESTADO 3: MOSTRAR AGENTES (Grid normal) */
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {assistants.map((assistant) => (
                             <AssistantCard
                                 key={assistant.id}
                                 assistant={assistant}
                                 onEdit={() => { setEditingAssistant(assistant); setIsModalOpen(true); }}
-                                // Al pulsar el botón de borrar, no borramos directamente, abrimos el modal
                                 onDelete={() => setConfirmDialog({ id: assistant.id, name: assistant.name })}
                                 onClick={() => onEnterChat(assistant)}
                             />
@@ -90,7 +95,6 @@ export default function Dashboard({ assistants, onRefresh, onLogout, onEnterChat
                 )}
             </main>
 
-            {/* MODAL DE CONFIRMACIÓN PARA BORRAR ASISTENTE */}
             {confirmDialog && (
                 <ConfirmModal 
                     title="¿Eliminar asistente?"
@@ -100,17 +104,16 @@ export default function Dashboard({ assistants, onRefresh, onLogout, onEnterChat
                 />
             )}
 
-            {/* MODAL DE EDICIÓN/CREACIÓN DE ASISTENTE */}
             {isModalOpen && (
                 <AssistantModal 
                     assistant={editingAssistant} 
                     onClose={() => setIsModalOpen(false)} 
                     onSave={() => {
                         onRefresh();
-                        setIsModalOpen(false); // Cerramos el modal tras guardar
+                        setIsModalOpen(false);
                         showToast(editingAssistant ? "Asistente actualizado" : "Asistente creado con éxito", "success");
                     }} 
-                    showToast={showToast} // Le pasamos el control de toasts para que los use al subir PDFs
+                    showToast={showToast}
                 />
             )}
         </div>
