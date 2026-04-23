@@ -49,7 +49,7 @@ app = FastAPI(title="Contexta RAG - Azure Edition")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8000"],
+    allow_origins=["https://contexta.azurewebsites.net:5173", "https://contexta.azurewebsites.net:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -395,4 +395,4 @@ else:
         return {"message": "Frontend no detectado."}
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="localhost", port=8000, reload=True)
+    uvicorn.run("main:app", host="https://contexta.azurewebsites.net", port=8000, reload=True)

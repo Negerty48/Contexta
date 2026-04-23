@@ -33,7 +33,7 @@ export default function AssistantModal({ assistant, onClose, onSave, showToast }
         try {
             const token = localStorage.getItem('contexta_token');
             // Usamos la ruta correcta que tienes en tu backend
-            const response = await fetch(`http://localhost:8000/api/asistentes/${assistant.id}/documentos/${docId}`, {
+            const response = await fetch(`https://contexta.azurewebsites.net:8000/api/asistentes/${assistant.id}/documentos/${docId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -71,8 +71,8 @@ export default function AssistantModal({ assistant, onClose, onSave, showToast }
         try {
             const token = localStorage.getItem('contexta_token');
             const url = isEditing 
-                ? `http://localhost:8000/api/asistentes/${assistant.id}` 
-                : 'http://localhost:8000/api/asistentes';
+                ? `https://contexta.azurewebsites.net:8000/api/asistentes/${assistant.id}` 
+                : 'https://contexta.azurewebsites.net:8000/api/asistentes';
             const method = isEditing ? 'PUT' : 'POST';
 
             const response = await fetch(url, {

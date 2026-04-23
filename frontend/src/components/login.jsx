@@ -14,7 +14,7 @@ export default function Login({ onLogin }) {
     if (isSignUp) {
       if (!name) return;
       try {
-        const response = await fetch("http://localhost:8000/auth/registro", {
+        const response = await fetch("https://contexta.azurewebsites.net:8000/auth/registro", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ nombre: name, email, password })
@@ -38,7 +38,7 @@ export default function Login({ onLogin }) {
         formData.append("username", email);
         formData.append("password", password);
 
-        const response = await fetch("http://localhost:8000/auth/token", {
+        const response = await fetch("https://contexta.azurewebsites.net:8000/auth/token", {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: formData,

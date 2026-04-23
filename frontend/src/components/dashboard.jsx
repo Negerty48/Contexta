@@ -13,7 +13,7 @@ export default function Dashboard({ assistants, onRefresh, onLogout, onEnterChat
     const handleDelete = async (id) => {
         try {
             const token = localStorage.getItem('contexta_token');
-            const response = await fetch(`http://localhost:8000/api/asistentes/${id}`, {
+            const response = await fetch(`https://contexta.azurewebsites.net:8000/api/asistentes/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
