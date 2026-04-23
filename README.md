@@ -13,24 +13,24 @@ Permite a cualquier usuario sin conocimientos técnicos crear asistentes virtual
 ## Stack Tecnológico
 El proyecto está dividido en un frontend reactivo y un backend robusto apoyado en el ecosistema cloud de Microsoft Azure.
 
-- Frontend: React (JavaScript), Vite, Tailwind CSS.
-- Backend: Python 3.12, FastAPI, SQLAlchemy, Pydantic.
-- Base de Datos Relacional: Azure SQL Database.
-- Almacenamiento Físico: Azure Blob Storage.
-- Base de Datos Vectorial (RAG): Azure AI Search.
-- Modelos de IA: Azure OpenAI (gpt-4o-mini para inferencia, text-embedding-ada-002 para embeddings).
-- Despliegue: Vercel (Frontend) y Azure App Service for Linux (Backend).
+- **Frontend:** React (JavaScript), Vite, Tailwind CSS.
+- **Backend:** Python 3.12, FastAPI, SQLAlchemy, Pydantic.
+- **Base de Datos Relacional:** Azure SQL Database.
+- **Almacenamiento Físico:** Azure Blob Storage.
+- **Base de Datos Vectorial (RAG):** Azure AI Search.
+- **Modelos de IA:** Azure OpenAI (gpt-4o-mini para inferencia, text-embedding-ada-002 para embeddings).
+- **Despliegue:** Vercel (Frontend) y Azure App Service for Linux (Backend).
 
 ## Arquitectura Implementada
 El flujo de información sigue un patrón RAG clásico con persistencia completa en la nube:
 
-1. Ingesta de Datos: Cuando un usuario sube un documento al frontend, FastAPI lo recibe, guarda el archivo original en Azure Blob Storage, extrae el texto, lo divide en chunks, genera los embeddings usando el modelo de embeddings de Azure OpenAI, y los almacena en Azure AI Search asociados al ID de ese asistente en concreto.
+1. **Ingesta de Datos:** Cuando un usuario sube un documento al frontend, FastAPI lo recibe, guarda el archivo original en Azure Blob Storage, extrae el texto, lo divide en chunks, genera los embeddings usando el modelo de embeddings de Azure OpenAI, y los almacena en Azure AI Search asociados al ID de ese asistente en concreto.
 
-2. Conversación (Retrieval): El usuario envía una pregunta. FastAPI convierte la pregunta en un vector y busca en Azure AI Search los fragmentos de texto más similares semánticamente, filtrando estrictamente por el ID del asistente actual.
+2. **Conversación (Retrieval):** El usuario envía una pregunta. FastAPI convierte la pregunta en un vector y busca en Azure AI Search los fragmentos de texto más similares semánticamente, filtrando estrictamente por el ID del asistente actual.
 
-3. Generación: Se construye un "Mega-Prompt" que incluye la personalidad del asistente, las reglas estrictas de no alucinar, el contexto recuperado y el historial de la conversación. Esto se envía a gpt-4o-mini.
+3. **Generación:** Se construye un "Mega-Prompt" que incluye la personalidad del asistente, las reglas estrictas de no alucinar, el contexto recuperado y el historial de la conversación. Esto se envía a gpt-4o-mini.
 
-4. Persistencia: La respuesta se devuelve al frontend para mostrarse en la UI y, simultáneamente, la pregunta y la respuesta se guardan en Azure SQL para mantener la memoria a largo plazo.
+4. **Persistencia:** La respuesta se devuelve al frontend para mostrarse en la UI y, simultáneamente, la pregunta y la respuesta se guardan en Azure SQL para mantener la memoria a largo plazo.
 
 ## Decisiones de Diseño Relevantes
 - **Decisiones de Producto y UX**
