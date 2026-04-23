@@ -49,7 +49,7 @@ app = FastAPI(title="Contexta RAG - Azure Edition")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://contexta.azurewebsites.net:5173", "https://contexta.azurewebsites.net:8000"],
+    allow_origins=["https://contexta-theta.vercel.app", "https://contexta.azurewebsites.net:5173", "https://contexta.azurewebsites.net:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
