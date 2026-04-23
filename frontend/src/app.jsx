@@ -27,7 +27,7 @@ export default function App() {
             return;
         }
         try {
-            const response = await fetch("https://contexta.azurewebsites.net:8000/api/asistentes", {
+            const response = await fetch("https://contexta.azurewebsites.net/api/asistentes", {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {

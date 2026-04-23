@@ -25,7 +25,7 @@ export default function ChatView({ activeAssistantId, assistants, onSelectAssist
             
             try {
                 const token = localStorage.getItem('contexta_token');
-                const response = await fetch(`https://contexta.azurewebsites.net:8000/api/asistentes/${currentAssistant.id}/historial`, {
+                const response = await fetch(`https://contexta.azurewebsites.net/api/asistentes/${currentAssistant.id}/historial`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
@@ -66,7 +66,7 @@ export default function ChatView({ activeAssistantId, assistants, onSelectAssist
 
         try {
             const token = localStorage.getItem('contexta_token');
-            const response = await fetch(`https://contexta.azurewebsites.net:8000/api/asistentes/${currentAssistant.id}/chat`, {
+            const response = await fetch(`https://contexta.azurewebsites.net/api/asistentes/${currentAssistant.id}/chat`, {
                 method: 'POST',
                 headers: { 
                     'Authorization': `Bearer ${token}`,
