@@ -33,14 +33,10 @@ AZURE_OPENAI_CHAT_DEPLOYMENT = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT")
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
 
 # ========== CONFIGURACIÓN DE FASTAPI ==========
-ALLOWED_ORIGINS = [
+ALLOWED_ORIGINS = [    
     "https://contexta-theta.vercel.app",
     "http://localhost:3000",
     "http://localhost:5173",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
 ]
 
 # ========== CONFIGURACIÓN DE RAG ==========

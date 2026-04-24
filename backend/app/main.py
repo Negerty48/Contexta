@@ -419,14 +419,15 @@ def chat_asistente(
             role="user",
             content=chat_req.pregunta
         )
+        db.add(msg_user)
+        db.flush()  # Asegurar que se guarda el mensaje del usuario primero
+        
         msg_ia = MensajeChat(
             id=str(uuid.uuid4()),
             asistente_id=asistente_id,
             role="assistant",
             content=respuesta_ia
         )
-
-        db.add(msg_user)
         db.add(msg_ia)
         db.commit()
         
@@ -460,6 +461,34 @@ def obtener_historial(
     ).order_by(MensajeChat.creado_en.asc()).all()
     
     return [{"role": m.role, "content": m.content} for m in mensajes]
+
+
+@app.delete("/api/asistentes/{asistente_id}/historial", tags=["Chat"])
+def limpiar_historial(
+    asistente_id: str,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Limpia todo el historial de conversaciones de un asistente.
+    """
+    # Validar pertenencia
+    asistente = db.query(Asistente).filter(
+        Asistente.id == asistente_id,
+        Asistente.usuario_id == user_id
+    ).first()
+    
+    if not asistente:
+        raise HTTPException(status_code=404, detail="Asistente no encontrado")
+
+    # Eliminar todos los mensajes del asistente
+    db.query(MensajeChat).filter(
+        MensajeChat.asistente_id == asistente_id
+    ).delete()
+    
+    db.commit()
+    
+    return {"mensaje": "Historial limpiado"}
 
 
 # ========== ENDPOINTS DE FRONTEND ==========

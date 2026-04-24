@@ -33,16 +33,21 @@ export default function ChatView({ activeAssistantId, assistants, onSelectAssist
                 
                 if (response.ok) {
                     const data = await response.json();
+                    // Siempre empezar con el mensaje de saludo del asistente
+                    const mensajeInicial = { 
+                        role: 'ai', 
+                        content: `¡Hola! Soy ${currentAssistant.name}. ¿En qué puedo ayudarte?` 
+                    };
+                    
                     if (data.length > 0) {
-                        setMessages(data.map(m => ({
+                        // Incluir el mensaje inicial + historial
+                        const mensajesHistorial = data.map(m => ({
                             role: m.role === 'assistant' ? 'ai' : 'user',
                             content: m.content
-                        })));
+                        }));
+                        setMessages([mensajeInicial, ...mensajesHistorial]);
                     } else {                        
-                        setMessages([{ 
-                            role: 'ai', 
-                            content: `¡Hola! Soy ${currentAssistant.name}. ¿En qué puedo ayudarte?` 
-                        }]);
+                        setMessages([mensajeInicial]);
                     }
                 }
             } catch (error) {
@@ -53,7 +58,7 @@ export default function ChatView({ activeAssistantId, assistants, onSelectAssist
         };
 
         cargarHistorial();
-    }, [currentAssistant?.id]);
+    }, [currentAssistant?.id, currentAssistant?.name]);
 
     // Enviar un mensaje nuevo
     const handleSubmit = async (e) => {
@@ -68,13 +73,20 @@ export default function ChatView({ activeAssistantId, assistants, onSelectAssist
 
         try {
             const token = localStorage.getItem('contexta_token');
+            
+            // Preparar historial para enviar (excluyendo el mensaje inicial de saludo)
+            const historialParaEnviar = messages.slice(1).map(m => ({
+                role: m.role === 'ai' ? 'assistant' : 'user',
+                content: m.content
+            }));
+            
             const response = await fetch(`${API_URL}/api/asistentes/${currentAssistant.id}/chat`, {
                 method: 'POST',
                 headers: { 
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json' 
                 },                
-                body: JSON.stringify({ pregunta: userMessage, historial: [] }) 
+                body: JSON.stringify({ pregunta: userMessage, historial: historialParaEnviar }) 
             });
 
             if (response.ok) {
@@ -87,6 +99,32 @@ export default function ChatView({ activeAssistantId, assistants, onSelectAssist
             setMessages(prev => [...prev, { role: 'ai', content: "Ocurrió un error inesperado de conexión." }]);
         } finally {
             setIsThinking(false);
+        }
+    };
+
+    const handleResetChat = async () => {
+        if (!window.confirm('¿Estás seguro de que deseas borrar todo el historial de esta conversación?')) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('contexta_token');
+            const response = await fetch(`${API_URL}/api/asistentes/${currentAssistant.id}/historial`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                // Resetear el chat con el mensaje inicial
+                setMessages([{ 
+                    role: 'ai', 
+                    content: `¡Hola! Soy ${currentAssistant.name}. ¿En qué puedo ayudarte?` 
+                }]);
+            } else {
+                console.error("Error al limpiar el historial");
+            }
+        } catch (error) {
+            console.error("Error al conectar:", error);
         }
     };
 
@@ -129,13 +167,22 @@ export default function ChatView({ activeAssistantId, assistants, onSelectAssist
             <div className="flex-1 flex flex-col h-full relative">
                 
                 {/* CABECERA DEL CHAT */}
-                <header className="h-[65px] bg-gray-900/50 backdrop-blur-md border-b border-gray-800 flex items-center px-6 shrink-0 z-10">
+                <header className="h-[65px] bg-gray-900/50 backdrop-blur-md border-b border-gray-800 flex items-center justify-between px-6 shrink-0 z-10">
                     <div>
                         <h2 className="text-lg font-bold text-white flex items-center gap-2">
                             {currentAssistant.name}
                         </h2>
                         <p className="text-xs text-gray-500 truncate max-w-md">{currentAssistant.description}</p>
                     </div>
+                    <button
+                        onClick={handleResetChat}
+                        title="Limpiar conversación"
+                        className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                    </button>
                 </header>
 
                 {/* ÁREA DE MENSAJES */}
