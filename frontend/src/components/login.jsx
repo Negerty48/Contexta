@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function Login({ onLogin }) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
@@ -14,7 +16,7 @@ export default function Login({ onLogin }) {
     if (isSignUp) {
       if (!name) return;
       try {
-        const response = await fetch("https://contexta.azurewebsites.net/auth/registro", {
+        const response = await fetch(`${API_URL}/auth/registro`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ nombre: name, email, password })
@@ -38,7 +40,7 @@ export default function Login({ onLogin }) {
         formData.append("username", email);
         formData.append("password", password);
 
-        const response = await fetch("https://contexta.azurewebsites.net/auth/token", {
+        const response = await fetch(`${API_URL}/auth/token`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: formData,

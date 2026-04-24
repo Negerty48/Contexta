@@ -4,6 +4,8 @@ import Dashboard from './components/dashboard';
 import ChatView from './components/chat_view';
 import Toast from './components/toast';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -27,7 +29,7 @@ export default function App() {
             return;
         }
         try {
-            const response = await fetch("https://contexta.azurewebsites.net/api/asistentes", {
+            const response = await fetch(`${API_URL}/api/asistentes`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {

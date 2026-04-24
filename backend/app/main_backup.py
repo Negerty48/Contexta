@@ -20,7 +20,7 @@ from jose import jwt, JWTError
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 from dotenv import load_dotenv
 from azure.storage.blob import BlobServiceClient
-from rag_engine import (
+from backend.app.rag_engine_backup import (
     procesar_e_ingestar_documento, 
     generar_respuesta_rag, 
     eliminar_documento_del_indice, 

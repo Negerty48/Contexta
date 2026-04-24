@@ -3,6 +3,8 @@ import AssistantCard from './assistant_card';
 import AssistantModal from './assistant_modal';
 import ConfirmModal from './confirm_modal';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function Dashboard({ assistants, onRefresh, onLogout, onEnterChat, showToast, isFetching }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAssistant, setEditingAssistant] = useState(null);
@@ -13,7 +15,7 @@ export default function Dashboard({ assistants, onRefresh, onLogout, onEnterChat
     const handleDelete = async (id) => {
         try {
             const token = localStorage.getItem('contexta_token');
-            const response = await fetch(`https://contexta.azurewebsites.net/api/asistentes/${id}`, {
+            const response = await fetch(`${API_URL}/api/asistentes/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

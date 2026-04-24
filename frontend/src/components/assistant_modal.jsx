@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import ConfirmModal from './confirm_modal';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function AssistantModal({ assistant, onClose, onSave, showToast }) {
     const isEditing = !!assistant;
     
@@ -33,7 +35,7 @@ export default function AssistantModal({ assistant, onClose, onSave, showToast }
         try {
             const token = localStorage.getItem('contexta_token');
             // Usamos la ruta correcta que tienes en tu backend
-            const response = await fetch(`https://contexta.azurewebsites.net/api/asistentes/${assistant.id}/documentos/${docId}`, {
+            const response = await fetch(`${API_URL}/api/asistentes/${assistant.id}/documentos/${docId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -71,8 +73,8 @@ export default function AssistantModal({ assistant, onClose, onSave, showToast }
         try {
             const token = localStorage.getItem('contexta_token');
             const url = isEditing 
-                ? `https://contexta.azurewebsites.net/api/asistentes/${assistant.id}` 
-                : 'https://contexta.azurewebsites.net/api/asistentes';
+                ? `${API_URL}/api/asistentes/${assistant.id}` 
+                : `${API_URL}/api/asistentes`;
             const method = isEditing ? 'PUT' : 'POST';
 
             const response = await fetch(url, {
