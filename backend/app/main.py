@@ -520,4 +520,4 @@ def health_check():
 # ========== MAIN ==========
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="localhost", port=8000, reload=True)
+    uvicorn.run("main:app", host="https://contexta.azurewebsites.net", port=8000, reload=True)
