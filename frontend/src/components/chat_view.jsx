@@ -103,7 +103,8 @@ export default function ChatView({ activeAssistantId, assistants, onSelectAssist
             setIsThinking(false);
         }
     };
-() => {
+    
+    const handleResetChat = () => {
         setShowConfirmModal(true);
     };
 
@@ -132,8 +133,7 @@ export default function ChatView({ activeAssistantId, assistants, onSelectAssist
     };
 
     const handleCancelReset = () => {
-        setShowConfirmModal(false);   console.error("Error al conectar:", error);
-        }
+        setShowConfirmModal(false);
     };
 
     if (!currentAssistant) return null;
