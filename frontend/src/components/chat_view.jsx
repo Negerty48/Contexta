@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ConfirmModal from './confirm_modal';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -6,7 +7,8 @@ export default function ChatView({ activeAssistantId, assistants, onSelectAssist
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');    
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);     
-    const [isThinking, setIsThinking] = useState(false); 
+    const [isThinking, setIsThinking] = useState(false);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
     const messagesEndRef = useRef(null);
     const currentAssistant = assistants.find(a => a.id === activeAssistantId);
     const scrollToBottom = () => {
@@ -101,11 +103,12 @@ export default function ChatView({ activeAssistantId, assistants, onSelectAssist
             setIsThinking(false);
         }
     };
+() => {
+        setShowConfirmModal(true);
+    };
 
-    const handleResetChat = async () => {
-        if (!window.confirm('¿Estás seguro de que deseas borrar todo el historial de esta conversación?')) {
-            return;
-        }
+    const handleConfirmReset = async () => {
+        setShowConfirmModal(false);
 
         try {
             const token = localStorage.getItem('contexta_token');
@@ -125,6 +128,11 @@ export default function ChatView({ activeAssistantId, assistants, onSelectAssist
             }
         } catch (error) {
             console.error("Error al conectar:", error);
+        }
+    };
+
+    const handleCancelReset = () => {
+        setShowConfirmModal(false);   console.error("Error al conectar:", error);
         }
     };
 
@@ -248,6 +256,16 @@ export default function ChatView({ activeAssistantId, assistants, onSelectAssist
                 </div>
 
             </div>
+
+            {/* MODAL DE CONFIRMACIÓN */}
+            {showConfirmModal && (
+                <ConfirmModal 
+                    title="Limpiar conversación"
+                    message="¿Estás seguro de que deseas borrar todo el historial de esta conversación?"
+                    onConfirm={handleConfirmReset}
+                    onCancel={handleCancelReset}
+                />
+            )}
         </div>
     );
 }

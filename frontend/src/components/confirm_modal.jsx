@@ -13,13 +13,13 @@ export default function ConfirmModal({ title, message, onConfirm, onCancel }) {
                         onClick={onCancel}
                         className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium rounded-lg transition-colors"
                     >
-                        Cancelar
+                        No
                     </button>
                     <button 
                         onClick={onConfirm}
                         className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors"
                     >
-                        Sí, eliminar
+                        Sí
                     </button>
                 </div>
             </div>
